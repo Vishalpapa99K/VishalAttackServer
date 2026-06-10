@@ -1,0 +1,22 @@
+# ════════════════════════════════════════════════════════════════
+# Slot Gateway API — Python Dependencies
+# Install: pip install -r requirements.txt
+# ════════════════════════════════════════════════════════════════
+
+# Web framework
+Flask==3.1.3
+
+# HTTP client (for forwarding to proxy.py)
+requests==2.34.2
+
+# MongoDB driver (user storage + audit log)
+pymongo==4.17.0
+
+# DNS resolver (required by pymongo for mongodb+srv:// URIs)
+dnspython==2.7.0
+
+# AES + HMAC encryption (gateway ↔ proxy)
+pycryptodome==3.23.0
+
+# Production WSGI server
+gunicorn==23.0.0
