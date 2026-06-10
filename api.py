@@ -50,7 +50,7 @@ GATEWAY_AES_KEY = os.getenv('GATEWAY_AES_KEY', 'GATEWAY_2024_AES!')[:16].ljust(1
 GATEWAY_HMAC_SECRET = os.getenv('GATEWAY_HMAC_SECRET', 'GATEWAY_HMAC_2024_SECRET').encode('utf-8')
 
 # Admin token (X-Admin-Token header)
-ADMIN_TOKEN = os.getenv('ADMIN_TOKEN', 'admin_change_me_2024')
+ADMIN_TOKEN = os.getenv('ADMIN_TOKEN', 'VKSTARRAJ')
 
 # MongoDB
 MONGO_URI = os.getenv('MONGO_URI', '')
@@ -473,22 +473,19 @@ def admin_audit_log_view():
 # ════════════════════════════════════════════════════════════════
 @app.route('/health')
 def health():
-    total_active = sum(len(v) for v in active_slots.values())
-    user_count = users_col.count_documents({}) if users_col is not None else 0
-    return jsonify({
-        'status': 'online',
-        'service': 'Slot Gateway (encrypted)',
-        'version': '3.0',
-        'time': datetime.utcnow().isoformat() + 'Z',
-        'total_users': user_count,
-        'total_active_slots': total_active,
-        'proxy_url': PROXY_URL,
-        'db_connected': db is not None,
-        'encryption': 'AES-128-CBC + HMAC-SHA256',
-    })
+    """Minimal health — only status, no internals exposed."""
+    return jsonify({'status': 'ok'})
 
 
-LOGS_TEMPLATE = '''<!doctype html><html><head><meta charset="utf-8"><title>Gateway Logs</title>
+@app.route('/logs')
+def logs_view():
+    """Logs only accessible with admin token."""
+    if not _admin_check():
+        return '', 404
+    return render_template_string(LOGS_TEMPLATE, logs=list(request_log))
+
+
+LOGS_TEMPLATE = '''<!doctype html><html><head><meta charset="utf-8"><title>Logs</title>
 <style>
 body{font-family:'Segoe UI',sans-serif;background:#0f1117;color:#f3f4f6;margin:0;padding:24px}
 h1{color:#818cf8;font-size:22px;margin-bottom:6px}
@@ -501,38 +498,27 @@ td{padding:9px 14px;font-size:12px;border-bottom:1px solid #252938;color:#e5e7eb
 .empty{padding:40px;text-align:center;color:#6b7280}
 .refresh{background:#6366f1;color:#fff;text-decoration:none;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600}
 </style></head><body>
-<h1>🛰️ Slot Gateway — Logs</h1>
+<h1>Logs</h1>
 <p class="sub">Last {{ logs|length }} requests</p>
-<a class="refresh" href="/logs">↻ Refresh</a>
+<a class="refresh" href="/logs?token={{ request.args.get('token','') }}">Refresh</a>
 <table>
-<thead><tr><th>Time</th><th>User</th><th>Endpoint</th><th>Target</th><th>Status</th><th>Slots</th><th>Message</th></tr></thead>
+<thead><tr><th>Time</th><th>User</th><th>Target</th><th>Status</th><th>Slots</th><th>Message</th></tr></thead>
 <tbody>
 {% for log in logs %}<tr>
 <td class="mono">{{ log.time[11:19] }}</td>
 <td>{{ log.user }}</td>
-<td>{{ log.endpoint }}</td>
-<td>{{ log.params.get('host') or log.params.get('target', '—') }}:{{ log.params.get('port', '—') }}</td>
+<td>{{ log.params.get('ip') or log.params.get('host') or log.params.get('target', '') }}:{{ log.params.get('port', '') }}</td>
 <td class="{{ log.status }}">{{ log.status|upper }}</td>
 <td class="mono">{{ log.slot_info }}</td>
-<td>{{ log.message }}</td>
-</tr>{% else %}<tr><td colspan="7" class="empty">No requests yet.</td></tr>{% endfor %}
+<td>{{ log.message[:60] }}</td>
+</tr>{% else %}<tr><td colspan="6" class="empty">No requests yet.</td></tr>{% endfor %}
 </tbody></table></body></html>'''
-
-
-@app.route('/logs')
-def logs_view():
-    return render_template_string(LOGS_TEMPLATE, logs=list(request_log))
 
 
 @app.route('/')
 def index():
-    db_ok = '✓' if db is not None else '✗'
-    return f'''<html><body style="font-family:Segoe UI;background:#0f1117;color:#fff;padding:30px">
-<h1 style="color:#818cf8">🛰️ Slot Gateway v3 (Encrypted)</h1>
-<p>DB: {db_ok} · Proxy: {PROXY_URL} · Encryption: AES-128-CBC + HMAC-SHA256</p>
-<p><a href="/health" style="color:#10b981">Health</a> · <a href="/logs" style="color:#10b981">Logs</a></p>
-<p style="color:#9ca3af;font-size:13px">Admin endpoints require <code>X-Admin-Token</code> header.</p>
-</body></html>'''
+    """Return nothing — hide the service existence."""
+    return '', 404
 
 
 # ════════════════════════════════════════════════════════════════
